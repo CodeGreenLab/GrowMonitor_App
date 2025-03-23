@@ -1,0 +1,4 @@
+﻿Versao: 2.0.2+8
+Data: 2025-03-23 20:53
+Notas:
+melhorias
