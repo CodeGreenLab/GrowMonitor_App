@@ -1,0 +1,4 @@
+﻿Versao: 2.0.2+7
+Data: 2025-03-23 20:48
+Notas:
+melhorias na parte de atualizacao
