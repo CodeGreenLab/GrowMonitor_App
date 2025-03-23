@@ -16,12 +16,32 @@ dependencies:
   firebase_core: ^2.32.0
   cloud_firestore: ^4.17.5
   flutter_dotenv: ^5.0.2
+  intl: ^0.18.0 # Para formatação de datas
   cupertino_icons: ^1.0.8
+  flutter_downloader: ^1.10.0 # Para baixar o APK
+  open_file: ^3.3.1           # Para abrir o APK baixado
+  permission_handler: ^11.4.0 # Para solicitar permissões de armazenamento
+  path_provider: ^2.0.14 # Add the path_provider package
+  package_info_plus: ^8.0.0   # Adicione esta linha
+  device_info_plus: ^11.3.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1  # Para personalizar o ícone
+  flutter_native_splash: ^2.3.1    # Para adicionar splash screen
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/icon.png"  # Caminho da imagem do ícone
+
+flutter_native_splash:
+  color: "#FFFFFF"  # Cor de fundo da splash screen
+  image: "assets/images/splash.png"  # Caminho da imagem da splash screen
+  android: true
+  ios: true
 
 flutter:
   uses-material-design: true
