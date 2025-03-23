@@ -1,0 +1,4 @@
+﻿Versao: 2.0.1+5
+Data: 2025-03-23 20:19
+Notas:
+Melhoria do processo de atualizacao
