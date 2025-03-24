@@ -8,7 +8,7 @@ if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
 function Get-PubspecVersion {
     $line = Get-Content pubspec.yaml | Where-Object { $_ -match '^version:' }
     if ($line -match 'version:\s*(\d+\.\d+\.\d+)\+(\d+)') {
-        return @{ version = $matches[1]; build = $matches[2] }
+        return @{ version = $matches[1]; build = [int]$matches[2] }
     }
     return $null
 }
@@ -18,7 +18,7 @@ function Get-GradleVersion {
     $gradle = Get-Content "android/app/build.gradle.kts"
     $versionName = ($gradle | Where-Object { $_ -match 'versionName\s*=' }) -replace '.*?"(.*?)".*', '$1'
     $versionCode = ($gradle | Where-Object { $_ -match 'versionCode\s*=' }) -replace '.*?(\d+).*', '$1'
-    return @{ name = $versionName; code = $versionCode }
+    return @{ name = $versionName; code = [int]$versionCode }
 }
 
 # Exibe versoes atuais
@@ -32,7 +32,11 @@ Write-Host ""
 
 # Solicita nova versao
 $version = Read-Host 'Digite a NOVA versao (ex: 2.0.0)'
-$buildNumber = Read-Host 'Digite o NOVO numero de build (ex: 2)'
+$buildNumber = $pubspec.build + 1
+$tagName = "v$version+$buildNumber"
+$releaseFolder = "releases/$version+$buildNumber"
+$apkName = "app-release.apk"
+$apkPath = "$releaseFolder/$apkName"
 
 # Atualiza pubspec.yaml
 (Get-Content pubspec.yaml) `
@@ -57,30 +61,77 @@ flutter build apk --release
 Write-Host "APK gerado."
 
 # Cria pasta releases/versao
-$releaseFolder = "releases/$version+$buildNumber"
 if (!(Test-Path $releaseFolder)) {
     New-Item -ItemType Directory -Path $releaseFolder | Out-Null
 }
 
-# Copia o APK para a pasta releases
-$apkSource = "build/app/outputs/flutter-apk/app-release.apk"
-$apkDest = "$releaseFolder/app-release.apk"
-Copy-Item -Path $apkSource -Destination $apkDest -Force
-Write-Host "APK copiado para $apkDest"
+# Copia o APK
+Copy-Item -Path "build/app/outputs/flutter-apk/app-release.apk" -Destination $apkPath -Force
+Write-Host "APK copiado para $apkPath"
 
-# Pergunta se deseja adicionar changelog
+# Changelog opcional
+$changelogPath = "$releaseFolder/changelog.txt"
 $addChangelog = Read-Host 'Deseja adicionar um changelog.txt nesta release? (s/n)'
+$hasNotes = $false
 if ($addChangelog -eq 's') {
     $notes = Read-Host 'Digite as notas desta versao'
-    $notesPath = "$releaseFolder/changelog.txt"
     $date = Get-Date -Format "yyyy-MM-dd HH:mm"
-    "Versao: $version+$buildNumber`nData: $date`nNotas:`n$notes" | Out-File -Encoding utf8 $notesPath
-    Write-Host "Changelog salvo em $notesPath"
+    "Versao: $version+$buildNumber`nData: $date`nNotas:`n$notes" | Out-File -Encoding utf8 $changelogPath
+    $hasNotes = $true
+    Write-Host "Changelog salvo em $changelogPath"
 }
 
-# Pergunta se deseja abrir a pasta do APK
+# Abre pasta do APK
 $open = Read-Host 'Deseja abrir a pasta do APK? (s/n)'
 if ($open -eq 's') {
-    $apkPath = Resolve-Path $releaseFolder
-    Start-Process $apkPath
+    Start-Process (Resolve-Path $releaseFolder)
+}
+
+# Git commit, tag e push
+$gitConfirm = Read-Host 'Deseja comitar e versionar no Git? (s/n)'
+if ($gitConfirm -eq 's') {
+    git add pubspec.yaml
+    git add android/app/build.gradle.kts
+    if ($hasNotes) { git add $changelogPath }
+
+    $commitMessage = "release: $tagName"
+    git commit -m $commitMessage
+    git tag $tagName
+    git push
+    git push origin $tagName
+    Write-Host "Commit, tag e push realizados com sucesso."
+}
+
+# Cria release com gh CLI
+$ghConfirm = Read-Host 'Deseja criar uma release no GitHub? (s/n)'
+if ($ghConfirm -eq 's') {
+    $releaseTitle = "Versao $version+$buildNumber"
+    if ($hasNotes) {
+        gh release create $tagName $apkPath --title "$releaseTitle" --notes (Get-Content $changelogPath | Out-String)
+    } else {
+        gh release create $tagName $apkPath --title "$releaseTitle" --generate-notes
+    }
+    Write-Host "Release criada com sucesso no GitHub."
+}
+
+# Atualiza latest_version.json
+$latestJsonPath = "latest_version.json"
+$repoUser = "CodeGreenLab"
+$repoName = "GrowMonitor_app"
+$apkUrl = "https://github.com/$repoUser/$repoName/releases/download/$tagName/$apkName"
+
+$latestJson = @{
+    version = $version
+    build = $buildNumber
+    url = $apkUrl
+} | ConvertTo-Json -Depth 2
+
+$latestJson | Set-Content -Encoding UTF8 $latestJsonPath
+Write-Host "latest_version.json atualizado com link: $apkUrl"
+
+# Adiciona latest_version.json ao Git se versao foi versionada
+if ($gitConfirm -eq 's') {
+    git add $latestJsonPath
+    git commit --amend --no-edit
+    git push --force-with-lease
 }
