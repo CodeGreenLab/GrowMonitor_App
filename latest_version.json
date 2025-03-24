@@ -1,4 +1,5 @@
 ﻿{
-    "version":  "v2.0.2+8",
-    "url":  "https://github.com/CodeGreenLab/GrowMonitor_app/releases/download/v2.0.2+8/app-release.apk"
+    "url":  "https://github.com/CodeGreenLab/GrowMonitor_app/releases/download/v2.0.3+9/app-release.apk",
+    "build":  9,
+    "version":  "2.0.3"
 }
